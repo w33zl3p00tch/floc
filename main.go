@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -71,7 +73,13 @@ func run(source, target string, f, q bool) error {
 	if err := input.Close(); err != nil {
 		return (err)
 	}
+
+	if err := output.Close(); err != nil {
+		return (err)
+	}
+
 	fmt.Println(br, bw)
+	compare(source, target)
 
 	return nil
 }
@@ -79,6 +87,7 @@ func run(source, target string, f, q bool) error {
 func doWrite(input, output *os.File, bs int) (uint64, uint64, error) {
 	var bytesRead, bytesWritten uint64
 	var eof bool = false
+	var err error
 
 	for {
 		buffer := make([]byte, bs)
@@ -90,6 +99,7 @@ func doWrite(input, output *os.File, bs int) (uint64, uint64, error) {
 		}
 
 		if eof && br == 0 {
+			fmt.Println("copied")
 			break
 		}
 
@@ -102,5 +112,70 @@ func doWrite(input, output *os.File, bs int) (uint64, uint64, error) {
 		bytesWritten += uint64(bw)
 	}
 
-	return bytesRead, bytesWritten, output.Close()
+	return bytesRead, bytesWritten, err
+}
+
+func compare(source, target string) error {
+	//var wg sync.WaitGroup
+	queue := make(chan string, 2)
+
+	//wg.Add(2)
+	go func(f string) {
+		fmt.Println("1")
+		//defer wg.Done()
+		fmt.Println("2")
+		s, err := sha256sumFile(f)
+		fmt.Println(f + " returned " + s)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(4)
+		}
+		queue <- s
+	}(source)
+
+	go func(f string) {
+		fmt.Println("x1")
+		//defer wg.Done()
+		fmt.Println("x2")
+		s, err := sha256sumFile(f)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(4)
+		}
+		queue <- s
+	}(target)
+
+	s1 := <-queue
+	s2 := <-queue
+
+	fmt.Println(s1)
+	fmt.Println(s2)
+
+	if s1 == s1 {
+		fmt.Println("checksums match")
+	}
+
+	return nil
+}
+
+func sha256sumFile(file string) (string, error) {
+	var f *os.File
+	var s string
+	var err error
+
+	if f, err = os.Open(file); err != nil {
+		return s, err
+	}
+
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		f.Close()
+		return s, err
+	}
+
+	s = hex.EncodeToString(h.Sum(nil))
+
+	return s, nil
 }
