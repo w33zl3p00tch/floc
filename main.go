@@ -16,7 +16,7 @@ func main() {
 
 	fmt.Println(force)
 	fmt.Println(quiet)
-	// TODO create checksums and compare them
+
 	if source == target {
 		fmt.Println("Error: source must not be the same as target")
 		os.Exit(1)
@@ -116,16 +116,10 @@ func doWrite(input, output *os.File, bs int) (uint64, uint64, error) {
 }
 
 func compare(source, target string) error {
-	//var wg sync.WaitGroup
 	queue := make(chan string, 2)
 
-	//wg.Add(2)
 	go func(f string) {
-		fmt.Println("1")
-		//defer wg.Done()
-		fmt.Println("2")
 		s, err := sha256sumFile(f)
-		fmt.Println(f + " returned " + s)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(4)
@@ -134,9 +128,6 @@ func compare(source, target string) error {
 	}(source)
 
 	go func(f string) {
-		fmt.Println("x1")
-		//defer wg.Done()
-		fmt.Println("x2")
 		s, err := sha256sumFile(f)
 		if err != nil {
 			fmt.Println(err)
