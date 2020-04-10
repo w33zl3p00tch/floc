@@ -48,7 +48,7 @@ func parseFlags() (string, string, bool, bool) {
 func run(source, target string, f, q bool) error {
 	const bs = 1024 * 1024 // 1 megabyte buffer size
 	var output, input *os.File
-	var br, bw uint64 = 0, 0
+	var br, bw int64 = 0, 0
 	var err error
 
 	if input, err = os.Open(source); err != nil {
@@ -79,13 +79,13 @@ func run(source, target string, f, q bool) error {
 	}
 
 	fmt.Println(br, bw)
-	compare(source, target)
+	compare(source, target, br, bw)
 
 	return nil
 }
 
-func doWrite(input, output *os.File, bs int) (uint64, uint64, error) {
-	var bytesRead, bytesWritten uint64
+func doWrite(input, output *os.File, bs int) (int64, int64, error) {
+	var bytesRead, bytesWritten int64
 	var eof bool = false
 	var err error
 
@@ -108,18 +108,18 @@ func doWrite(input, output *os.File, bs int) (uint64, uint64, error) {
 			return bytesRead, bytesWritten, err
 		}
 
-		bytesRead += uint64(br)
-		bytesWritten += uint64(bw)
+		bytesRead += int64(br)
+		bytesWritten += int64(bw)
 	}
 
 	return bytesRead, bytesWritten, err
 }
 
-func compare(source, target string) error {
+func compare(source, target string, br, bw int64) error {
 	queue := make(chan string, 2)
 
 	go func(f string) {
-		s, err := sha256sumFile(f)
+		s, err := sha256sumFile(f, br)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(4)
@@ -128,7 +128,7 @@ func compare(source, target string) error {
 	}(source)
 
 	go func(f string) {
-		s, err := sha256sumFile(f)
+		s, err := sha256sumFile(f, bw)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(4)
@@ -142,14 +142,14 @@ func compare(source, target string) error {
 	fmt.Println(s1)
 	fmt.Println(s2)
 
-	if s1 == s1 {
+	if s1 == s2 {
 		fmt.Println("checksums match")
 	}
 
 	return nil
 }
 
-func sha256sumFile(file string) (string, error) {
+func sha256sumFile(file string, bytes int64) (string, error) {
 	var f *os.File
 	var s string
 	var err error
@@ -161,7 +161,7 @@ func sha256sumFile(file string) (string, error) {
 	defer f.Close()
 
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
+	if _, err := io.CopyN(h, f, bytes); err != nil {
 		f.Close()
 		return s, err
 	}
