@@ -12,29 +12,37 @@ import (
 
 // main
 func main() {
-	var source, target string
-	var force, quiet, nocheck bool
-	source, target, _, _, nocheck = parseFlags() // TODO
+	conf := parseFlags() // TODO
 
 	//fmt.Println(force)
 	//fmt.Println(quiet)
 
-	if source == target && source != "" {
+	if conf.Source == conf.Target && conf.Source != "" {
 		fmt.Println("Error: source must not be the same as target")
 		os.Exit(1)
-	} else if source == "" {
+	} else if conf.Source == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	if err := run(source, target, force, quiet, nocheck); err != nil {
+	if err := run(conf); err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
 }
 
+type configuration struct {
+	Source  string
+	Target  string
+	Force   bool
+	NoCheck bool
+	Quiet   bool
+	BufSize int
+}
+
 // parseFlags interprets the command line flags.
-func parseFlags() (string, string, bool, bool, bool) {
+func parseFlags() configuration {
+	conf := configuration{}
 	//flag.Usage = func() { // TODO
 	//	fmt.Fprintf(os.Stderr, "Usage ofAARRGH %s:\n", os.Args[0])
 	//	flag.PrintDefaults()
@@ -49,34 +57,36 @@ func parseFlags() (string, string, bool, bool, bool) {
 	quietPtr := flag.Bool("quiet", false, "don't show progress"+nyi)
 	noCheckPtr := flag.Bool("nocheck", false, "skip checksum creation "+
 		"and comparison")
+	bufSizePtr := flag.Int("buffersize", 1024, "buffer size in bytes")
 	flag.Parse()
 
-	source := *sourcePtr
-	target := *targetPtr
-	force := *forcePtr
-	quiet := *quietPtr
-	nocheck := *noCheckPtr
+	conf.Source = *sourcePtr
+	conf.Target = *targetPtr
+	conf.Force = *forcePtr
+	conf.Quiet = *quietPtr
+	conf.NoCheck = *noCheckPtr
+	conf.BufSize = *bufSizePtr
 
-	return source, target, force, quiet, nocheck
+	return conf
 }
 
 // run wraps the process together.
-func run(source, target string, f, q, nc bool) error {
-	const bs = 1024 * 1024 // 1 megabyte buffer size
+func run(c configuration) error {
+	var bs = 1024 * c.BufSize // 1 megabyte buffer size
 	var output, input *os.File
 	var br, bw int64
 	var err error
 
-	if input, err = os.Open(source); err != nil {
+	if input, err = os.Open(c.Source); err != nil {
 		return err
 	}
 
-	if _, err := os.Stat(target); os.IsNotExist(err) {
-		if output, err = os.Create(target); err != nil {
+	if _, err := os.Stat(c.Target); os.IsNotExist(err) {
+		if output, err = os.Create(c.Target); err != nil {
 			return err
 		}
 	} else {
-		if output, err = os.OpenFile(target, os.O_WRONLY,
+		if output, err = os.OpenFile(c.Target, os.O_WRONLY,
 			os.ModeAppend); err != nil {
 			return err
 		}
@@ -95,8 +105,8 @@ func run(source, target string, f, q, nc bool) error {
 	}
 
 	fmt.Println(br, bw)
-	if !nc { // skip this if nocheck is true
-		if err = compare(source, target, br, bw); err != nil {
+	if !c.NoCheck { // skip this if nocheck is true
+		if err = compare(c.Source, c.Target, br, bw); err != nil {
 			return err
 		}
 	}
@@ -181,6 +191,12 @@ func compare(source, target string, br, bw int64) error {
 
 	return nil
 }
+
+// wrapShaFile adds the filename and checksum to a string slice. This
+// makes the hashes identifiable, e.g. in case of a bad backup.
+//func wrapShaFile(file string, bytes int64) (string, error) {
+//
+//}
 
 // sha256sumFile takes the pathname of a file to generate a sha256 hash from.
 // bytes tells the function how many bytes should be read. In case of USB
