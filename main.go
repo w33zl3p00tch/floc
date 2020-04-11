@@ -51,13 +51,14 @@ func parseFlags() configuration {
 	nyi := "\n(not yet implemented)"
 	sourcePtr := flag.String("source", "", "the source image file or "+
 		"device")
-	targetPtr := flag.String("target", "", "the target device or image file")
+	targetPtr := flag.String("target", "", "the target device or image"+
+		" file")
 	forcePtr := flag.Bool("force", false, "force the operation without"+
 		" confirmation and summary of pending actions"+nyi)
 	quietPtr := flag.Bool("quiet", false, "don't show progress"+nyi)
 	noCheckPtr := flag.Bool("nocheck", false, "skip checksum creation "+
 		"and comparison")
-	bufSizePtr := flag.Int("buffersize", 1024, "buffer size in bytes")
+	bufSizePtr := flag.Int("buffersize", 1024, "buffer size in kilobytes")
 	flag.Parse()
 
 	conf.Source = *sourcePtr
@@ -72,7 +73,7 @@ func parseFlags() configuration {
 
 // run wraps the process together.
 func run(c configuration) error {
-	var bs = 1024 * c.BufSize // 1 megabyte buffer size
+	var bs = 1024 * c.BufSize
 	var output, input *os.File
 	var br, bw int64
 	var err error
