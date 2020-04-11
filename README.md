@@ -21,7 +21,7 @@ To skip the potentially lengthy checksum comparison, simply add the ```-nocheck`
 
 Different buffer sizes than the default of 1 megabyte can be set by adding the ```-buffersize``` flag which currently only supports a value in kilobytes. This will become more flexible.
 
-If you are using macOS, you'll probly run into an "Operation not permitted" error if your target device contains a readable filesystem and is currently mounted. To fix this, don't eject the device in Finder but unmount it on the commandline like so:
+If you are using macOS, you'll probably run into an "Operation not permitted" error if your target device contains a readable filesystem and is currently mounted. To fix this, don't eject the device in Finder but unmount it on the commandline like so:
 ```
 sudo diskutil unmount /dev/diskX
 ```
