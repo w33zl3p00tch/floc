@@ -14,13 +14,16 @@ import (
 func main() {
 	var source, target string
 	var force, quiet, nocheck bool
-	source, target, force, quiet, nocheck = parseFlags()
+	source, target, _, _, nocheck = parseFlags() // TODO
 
-	fmt.Println(force)
-	fmt.Println(quiet)
+	//fmt.Println(force)
+	//fmt.Println(quiet)
 
-	if source == target {
+	if source == target && source != "" {
 		fmt.Println("Error: source must not be the same as target")
+		os.Exit(1)
+	} else if source == "" {
+		flag.Usage()
 		os.Exit(1)
 	}
 
@@ -32,12 +35,18 @@ func main() {
 
 // parseFlags interprets the command line flags.
 func parseFlags() (string, string, bool, bool, bool) {
+	//flag.Usage = func() { // TODO
+	//	fmt.Fprintf(os.Stderr, "Usage ofAARRGH %s:\n", os.Args[0])
+	//	flag.PrintDefaults()
+	// doc package here
+	//}
+	nyi := "\n(not yet implemented)"
 	sourcePtr := flag.String("source", "", "the source image file or "+
 		"device")
 	targetPtr := flag.String("target", "", "the target device or image file")
 	forcePtr := flag.Bool("force", false, "force the operation without"+
-		" confirmation and summary of pending actions")
-	quietPtr := flag.Bool("quiet", false, "don't show progress")
+		" confirmation and summary of pending actions"+nyi)
+	quietPtr := flag.Bool("quiet", false, "don't show progress"+nyi)
 	noCheckPtr := flag.Bool("nocheck", false, "skip checksum creation "+
 		"and comparison")
 	flag.Parse()
