@@ -32,7 +32,7 @@ do
 	pushd build/$prefix"$name" || exit 1
 		echo "Building $prefix$name"
 		GOOS=$goos GOARCH=$goarch go build -ldflags "-s -w" ../../
-		upx "$progName"
+		upx "$progName" || upx "$progName".exe
 		cp ../../LICENSE .
 		cp ../../README.md .
 		cd ..
