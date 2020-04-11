@@ -21,3 +21,6 @@ build/
 
 # Artifact by "go build"
 floc
+
+# Windows will take a little longer...
+windows/
