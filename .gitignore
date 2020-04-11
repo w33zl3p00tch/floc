@@ -15,3 +15,6 @@
 # vendor/
 
 build/
+
+# exlude all test files and unit tests for now
+*test*
