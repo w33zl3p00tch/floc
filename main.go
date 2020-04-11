@@ -1,3 +1,4 @@
+// package main
 package main
 
 import (
@@ -9,10 +10,11 @@ import (
 	"os"
 )
 
+// main
 func main() {
 	var source, target string
-	var force, quiet bool
-	source, target, force, quiet = parseFlags()
+	var force, quiet, nocheck bool
+	source, target, force, quiet, nocheck = parseFlags()
 
 	fmt.Println(force)
 	fmt.Println(quiet)
@@ -22,33 +24,38 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(source, target, force, quiet); err != nil {
+	if err := run(source, target, force, quiet, nocheck); err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
 }
 
-func parseFlags() (string, string, bool, bool) {
+// parseFlags interprets the command line flags.
+func parseFlags() (string, string, bool, bool, bool) {
 	sourcePtr := flag.String("source", "", "the source image file or "+
 		"device")
 	targetPtr := flag.String("target", "", "the target device or image file")
 	forcePtr := flag.Bool("force", false, "force the operation without"+
 		" confirmation and summary of pending actions")
 	quietPtr := flag.Bool("quiet", false, "don't show progress")
+	noCheckPtr := flag.Bool("nocheck", false, "skip checksum creation "+
+		"and comparison")
 	flag.Parse()
 
 	source := *sourcePtr
 	target := *targetPtr
 	force := *forcePtr
 	quiet := *quietPtr
+	nocheck := *noCheckPtr
 
-	return source, target, force, quiet
+	return source, target, force, quiet, nocheck
 }
 
-func run(source, target string, f, q bool) error {
+// run wraps the process together.
+func run(source, target string, f, q, nc bool) error {
 	const bs = 1024 * 1024 // 1 megabyte buffer size
 	var output, input *os.File
-	var br, bw int64 = 0, 0
+	var br, bw int64
 	var err error
 
 	if input, err = os.Open(source); err != nil {
@@ -71,19 +78,25 @@ func run(source, target string, f, q bool) error {
 	}
 
 	if err := input.Close(); err != nil {
-		return (err)
+		return err
 	}
 
 	if err := output.Close(); err != nil {
-		return (err)
+		return err
 	}
 
 	fmt.Println(br, bw)
-	compare(source, target, br, bw)
+	if !nc { // skip this if nocheck is true
+		if err = compare(source, target, br, bw); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
+// doWrite performs the read-write process. input and output can be devices,
+// partitions or image files containing raw device data.
 func doWrite(input, output *os.File, bs int) (int64, int64, error) {
 	var bytesRead, bytesWritten int64
 	var eof bool = false
@@ -115,6 +128,9 @@ func doWrite(input, output *os.File, bs int) (int64, int64, error) {
 	return bytesRead, bytesWritten, err
 }
 
+// compare the sha256 checksums of input and output. Note that those can
+// never match when using a cryptographically sound random source to generate
+// the input.
 func compare(source, target string, br, bw int64) error {
 	queue := make(chan string, 2)
 
@@ -144,11 +160,25 @@ func compare(source, target string, br, bw int64) error {
 
 	if s1 == s2 {
 		fmt.Println("checksums match")
+	} else {
+		fmt.Println("checksums do NOT match")
+		fmt.Println("This means that something went wrong," +
+			"\nor that your input has changed since the" +
+			"\nstart of this program." +
+			"\nFor more detailed information, please call this" +
+			"\nprogram again with the -h flag to read the" +
+			"\nbuilt-in documentation.")
 	}
 
 	return nil
 }
 
+// sha256sumFile takes the pathname of a file to generate a sha256 hash from.
+// bytes tells the function how many bytes should be read. In case of USB
+// media, block devices or partitions the medium will often be larger than the
+// flashed image file and creating a checksum of the whole device would result
+// in a different checksum.
+// The checksum is returned as a human-readable hexadecimal string.
 func sha256sumFile(file string, bytes int64) (string, error) {
 	var f *os.File
 	var s string
