@@ -7,20 +7,19 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 )
 
 // main
 func main() {
-	conf := parseFlags() // TODO
-
-	//fmt.Println(force)
-	//fmt.Println(quiet)
+	conf := parseFlags()
 
 	if conf.Source == conf.Target && conf.Source != "" {
 		fmt.Println("Error: source must not be the same as target")
 		os.Exit(1)
 	} else if conf.Source == "" {
+		fmt.Println("No valid arguments given.")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -38,6 +37,7 @@ type configuration struct {
 	NoCheck bool
 	Quiet   bool
 	BufSize int
+	Count   int // TODO: this will be useful with smaller buffers
 }
 
 // parseFlags interprets the command line flags.
@@ -105,8 +105,11 @@ func run(c configuration) error {
 		return err
 	}
 
-	fmt.Println(br, bw)
+	fmt.Printf("Bytes read:    %d\nBytes written: %d\n", br, bw)
+
 	if !c.NoCheck { // skip this if nocheck is true
+		fmt.Println("Comparing checksums. You can disable this" +
+			" in the future\nby setting the -nocheck flag")
 		if err = compare(c.Source, c.Target, br, bw); err != nil {
 			return err
 		}
@@ -138,6 +141,7 @@ func doWrite(input, output *os.File, bs int) (int64, int64, error) {
 
 		bw, err := output.Write(buffer[:br])
 		if err != nil {
+			log.Fatal(err)
 			return bytesRead, bytesWritten, err
 		}
 
